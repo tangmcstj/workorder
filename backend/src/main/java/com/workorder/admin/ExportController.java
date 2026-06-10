@@ -58,6 +58,14 @@ public class ExportController {
                     where e.deleted_at is null
                     order by e.id
                     """);
+            case "archive-tags", "exportTag" -> new ExportSpec("archive-tags.csv", List.of("archive_id", "equipment_id", "coding", "equipment_code", "model", "name", "region", "qrcode_path"), """
+                    select a.id archive_id, e.id equipment_id, e.coding, e.equipment_code, a.model, a.name,
+                           a.region, concat('/pages/equipment/info?coding=', e.coding) qrcode_path
+                    from equipment_item e
+                    join equipment_archive a on a.id=e.archive_id
+                    where e.deleted_at is null and a.deleted_at is null
+                    order by a.id, e.id
+                    """);
             case "repairs" -> new ExportSpec("repairs.csv", List.of("id", "repair_code", "equipment_code", "archive_name", "content", "register_user", "repair_user", "status"), """
                     select r.id, r.repair_code, e.equipment_code, a.name archive_name, r.content,
                            coalesce(ru.nickname, ru.username, '') register_user,
