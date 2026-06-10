@@ -1,11 +1,16 @@
 package com.workorder.equipment;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workorder.config.SystemConfigService;
 import com.workorder.migration.LegacyMigrationService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.ResultSet;
@@ -22,11 +27,14 @@ public class LegacyMiniProgramService {
     private final JdbcTemplate jdbc;
     private final SystemConfigService configService;
     private final LegacyMigrationService migrationService;
+    private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
 
-    public LegacyMiniProgramService(JdbcTemplate jdbc, SystemConfigService configService, LegacyMigrationService migrationService) {
+    public LegacyMiniProgramService(JdbcTemplate jdbc, SystemConfigService configService, LegacyMigrationService migrationService, ObjectMapper objectMapper) {
         this.jdbc = jdbc;
         this.configService = configService;
         this.migrationService = migrationService;
+        this.objectMapper = objectMapper;
     }
 
     private void ready() {
@@ -53,7 +61,7 @@ public class LegacyMiniProgramService {
         if (staff == null) {
             throw new IllegalArgumentException("该账号不存在或已被禁用");
         }
-        String bindOpenid = !isBlank(openid) ? openid : (!isBlank(code) && code.startsWith("openid:") ? code.substring("openid:".length()) : "");
+        String bindOpenid = resolveOpenid(code, openid);
         if (!isBlank(bindOpenid)) {
             jdbc.update("update staff set openid='', updated_at=now() where openid=?", bindOpenid);
             jdbc.update("update staff set openid=?, updated_at=now() where id=?", bindOpenid, staff.get("id"));
@@ -67,9 +75,9 @@ public class LegacyMiniProgramService {
         if (isBlank(code) && isBlank(openid)) {
             throw new IllegalArgumentException("参数不正确");
         }
-        String resolvedOpenid = !isBlank(openid) ? openid : (code != null && code.startsWith("openid:") ? code.substring("openid:".length()) : "");
+        String resolvedOpenid = resolveOpenid(code, openid);
         if (isBlank(resolvedOpenid)) {
-            throw new IllegalArgumentException("当前兼容接口需要传 openid，或传 code=openid:<openid> 用于测试绑定");
+            throw new IllegalArgumentException("微信登录失败，未获取到 openid");
         }
         Map<String, Object> staff = queryOne("select * from staff where openid=? and status='normal' and deleted_at is null", resolvedOpenid);
         if (staff == null) {
@@ -503,6 +511,49 @@ public class LegacyMiniProgramService {
     private Map<String, Object> queryOne(String sql, Object... args) {
         List<Map<String, Object>> rows = jdbc.query(sql, this::rowMap, args);
         return rows.isEmpty() ? null : rows.getFirst();
+    }
+
+    private String resolveOpenid(String code, String openid) {
+        if (!isBlank(openid)) {
+            return openid;
+        }
+        if (isBlank(code)) {
+            return "";
+        }
+        if (code.startsWith("openid:")) {
+            return code.substring("openid:".length());
+        }
+        Map<String, String> config = configService.values();
+        String appId = config.getOrDefault("weappid", "");
+        String secret = config.getOrDefault("weappsecret", "");
+        if (isBlank(appId) || isBlank(secret)) {
+            throw new IllegalArgumentException("小程序 AppID/Secret 未配置");
+        }
+        String url = "https://api.weixin.qq.com/sns/jscode2session"
+                + "?appid=" + encode(appId)
+                + "&secret=" + encode(secret)
+                + "&js_code=" + encode(code)
+                + "&grant_type=authorization_code";
+        try {
+            String body = restTemplate.getForObject(url, String.class);
+            Map<String, Object> data = objectMapper.readValue(body == null ? "{}" : body, new TypeReference<>() {});
+            Object errorCode = data.get("errcode");
+            if (errorCode != null && !"0".equals(String.valueOf(errorCode))) {
+                throw new IllegalArgumentException("微信登录失败：" + data.getOrDefault("errmsg", errorCode));
+            }
+            Object resolved = data.get("openid");
+            return resolved == null ? "" : String.valueOf(resolved);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (RestClientException e) {
+            throw new IllegalArgumentException("微信登录服务暂不可用");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("微信登录响应解析失败");
+        }
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private Map<String, Object> rowMap(ResultSet rs, int rowNum) throws SQLException {
