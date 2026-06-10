@@ -2,8 +2,12 @@ package com.workorder.admin;
 
 import com.workorder.common.ApiResponse;
 import com.workorder.migration.LegacyMigrationService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,6 +31,16 @@ public class ImportController {
     public ImportController(JdbcTemplate jdbc, LegacyMigrationService migrationService) {
         this.jdbc = jdbc;
         this.migrationService = migrationService;
+    }
+
+    @GetMapping("/archives-template.csv")
+    public ResponseEntity<byte[]> archiveTemplate() {
+        String template = "\ufeffid,model,name,amount,supplier,region,responsible,status,parameter,document,remark\n"
+                + ",示例型号,示例设备,1,供应商名称,所在区域,负责人昵称,normal,规格参数,/uploads/example.pdf,备注\n";
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=archives-import-template.csv")
+                .body(template.getBytes(StandardCharsets.UTF_8));
     }
 
     @PostMapping("/archives")

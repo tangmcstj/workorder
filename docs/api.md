@@ -51,6 +51,7 @@
 ## 用户与系统
 
 - `GET /api/admin/users-overview` 用户、员工、部门、旧角色只读核对
+- `GET /api/admin/import/archives-template.csv` 设备档案导入模板下载
 - `POST /api/admin/import/archives` 设备档案 CSV 导入，兼容旧 `equipment/archive/import`
 - `GET /api/admin/export/archives.csv` 设备档案导出
 - `GET /api/admin/export/archive-tags.csv` 设备标签数据导出，兼容旧 `equipment/archive/exportTag`

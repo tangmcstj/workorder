@@ -41,7 +41,7 @@
 已验证后台接口：
 
 - 登录、工作台、设备档案、设备列表、维修列表、巡检/保养任务、系统配置、用户角色。
-- 旧导入/导出权限节点已专项核对：`equipment/archive/import` 已实现为设备档案 CSV 导入，`equipment/archive/exportTag` 已实现为设备标签 CSV 导出。
+- 旧导入/导出权限节点已专项核对：`equipment/archive/import` 已实现为“下载模板 -> 上传 CSV -> 查看导入结果”的设备档案导入流程，`equipment/archive/exportTag` 已实现为设备标签 CSV 导出。
 - 已验证设备档案导出、设备标签导出、设备档案按 `id` 导入更新；导入测试后档案数量仍保持新旧一致。
 
 已验证微信小程序兼容接口：
