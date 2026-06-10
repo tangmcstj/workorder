@@ -1,0 +1,19 @@
+[Unit]
+Description=Workorder Spring Boot Service
+After=network.target mysqld.service redis.service
+
+[Service]
+User=www
+WorkingDirectory=/www/wwwroot/workorder-backend
+ExecStart=/usr/bin/java -jar /www/wwwroot/workorder-backend/workorder-backend.jar
+Restart=always
+RestartSec=5
+Environment=JAVA_OPTS=-Xms256m -Xmx768m
+Environment=DB_URL=jdbc:mysql://127.0.0.1:3306/workorder?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+Environment=DB_USERNAME=workorder
+Environment=DB_PASSWORD=change-me
+Environment=REDIS_HOST=127.0.0.1
+Environment=JWT_SECRET=change-this-secret-to-at-least-32-characters
+
+[Install]
+WantedBy=multi-user.target

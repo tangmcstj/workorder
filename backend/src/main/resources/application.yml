@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: workorder-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/workorder?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:workorder}
+    password: ${DB_PASSWORD:workorder}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+
+app:
+  jwt:
+    issuer: workorder-system
+    secret: ${JWT_SECRET:change-this-secret-to-at-least-32-characters}
+    access-token-minutes: 120
+  upload-root: ${UPLOAD_ROOT:/data/workorder/uploads}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
