@@ -39,6 +39,20 @@
             <el-descriptions-item label="维修与任务">/api/equipment/repairs, /api/equipment/submitPlanTasks</el-descriptions-item>
           </el-descriptions>
         </el-tab-pane>
+        <el-tab-pane label="菜单权限" name="menus">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="旧后台菜单节点">{{ access.menus.length }}</el-descriptions-item>
+            <el-descriptions-item label="旧设备权限节点">{{ access.equipmentRules.length }}</el-descriptions-item>
+            <el-descriptions-item label="旧角色组">{{ access.roles.length }}</el-descriptions-item>
+            <el-descriptions-item label="旧管理员">{{ access.admins.length }}</el-descriptions-item>
+          </el-descriptions>
+          <el-table :data="access.equipmentRules" border stripe height="360" class="settings-table">
+            <el-table-column prop="title" label="名称" width="160" />
+            <el-table-column prop="name" label="权限标识" min-width="260" show-overflow-tooltip />
+            <el-table-column prop="ismenu" label="菜单" width="80" />
+            <el-table-column prop="status" label="状态" width="100" />
+          </el-table>
+        </el-tab-pane>
       </el-tabs>
       <div class="settings-side">
         <div class="info-box">
@@ -81,6 +95,7 @@ const loading = ref(false)
 const saving = ref(false)
 const currentSecret = ref('')
 const stats = reactive({ reminderUserCount: 0, staffBoundOpenidCount: 0 })
+const access = reactive({ admins: [] as any[], roles: [] as any[], menus: [] as any[], equipmentRules: [] as any[] })
 const form = reactive({
   managePhone: '',
   weappId: '',
@@ -101,6 +116,11 @@ async function load() {
     currentSecret.value = data.weappSecretMasked
     stats.reminderUserCount = data.reminderUserCount
     stats.staffBoundOpenidCount = data.staffBoundOpenidCount
+    const accessData = await getData<typeof access>('/admin/access-overview')
+    access.admins = accessData.admins || []
+    access.roles = accessData.roles || []
+    access.menus = accessData.menus || []
+    access.equipmentRules = accessData.equipmentRules || []
   } finally {
     loading.value = false
   }

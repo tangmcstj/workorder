@@ -53,15 +53,78 @@ public class AdminDataController {
                 where deleted_at is null
                 order by id asc
                 """, this::rowMap));
+        data.put("admins", legacyAdmins());
         data.put("roles", legacyRoles());
+        data.put("rules", legacyRules());
+        data.put("menus", legacyMenus());
         return ApiResponse.ok(data);
+    }
+
+    @GetMapping("/access-overview")
+    public ApiResponse<Map<String, Object>> accessOverview() {
+        migrationService.ensureMigrated();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("admins", legacyAdmins());
+        data.put("roles", legacyRoles());
+        data.put("rules", legacyRules());
+        data.put("menus", legacyMenus());
+        data.put("equipmentRules", tableExists("fa_auth_rule") ? jdbc.query("""
+                select id, pid, type, name, title, icon, url, ismenu, menutype, weigh, status
+                from fa_auth_rule
+                where name like 'equipment/%'
+                order by pid asc, weigh desc, id asc
+                """, this::rowMap) : List.of());
+        return ApiResponse.ok(data);
+    }
+
+    private List<Map<String, Object>> legacyAdmins() {
+        if (!tableExists("fa_admin")) {
+            return List.of();
+        }
+        return jdbc.query("""
+                select a.id, a.username, a.nickname, a.email, a.mobile, a.status,
+                       coalesce(group_concat(g.name order by g.id separator '，'), '') group_names
+                from fa_admin a
+                left join fa_auth_group_access ga on ga.uid=a.id
+                left join fa_auth_group g on g.id=ga.group_id
+                group by a.id
+                order by a.id asc
+                """, this::rowMap);
     }
 
     private List<Map<String, Object>> legacyRoles() {
         if (!tableExists("fa_auth_group")) {
             return List.of();
         }
-        return jdbc.query("select id, name, status, rules from fa_auth_group order by id asc", this::rowMap);
+        return jdbc.query("""
+                select g.id, g.pid, g.name, g.status, g.rules,
+                       case when g.rules='*' then (select count(*) from fa_auth_rule) else 1 + length(g.rules) - length(replace(g.rules, ',', '')) end rule_count
+                from fa_auth_group g
+                order by g.id asc
+                """, this::rowMap);
+    }
+
+    private List<Map<String, Object>> legacyRules() {
+        if (!tableExists("fa_auth_rule")) {
+            return List.of();
+        }
+        return jdbc.query("""
+                select id, pid, type, name, title, icon, url, ismenu, menutype, weigh, status
+                from fa_auth_rule
+                order by pid asc, weigh desc, id asc
+                """, this::rowMap);
+    }
+
+    private List<Map<String, Object>> legacyMenus() {
+        if (!tableExists("fa_auth_rule")) {
+            return List.of();
+        }
+        return jdbc.query("""
+                select id, pid, type, name, title, icon, url, ismenu, menutype, weigh, status
+                from fa_auth_rule
+                where ismenu=1 or pid=0
+                order by pid asc, weigh desc, id asc
+                """, this::rowMap);
     }
 
     private boolean tableExists(String tableName) {
