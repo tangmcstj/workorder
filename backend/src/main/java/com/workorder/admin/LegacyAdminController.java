@@ -29,13 +29,18 @@ import java.util.Objects;
 @RequestMapping("/api/admin/legacy")
 public class LegacyAdminController {
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
-    private static final Map<String, ResourceSpec> RESOURCES = Map.of(
-            "departments", new ResourceSpec("department", List.of("name", "equipment_manage", "status")),
-            "suppliers", new ResourceSpec("supplier", List.of("supplier_code", "name", "relationship", "bank", "bank_account", "contact", "contact_mobile", "remark", "status")),
-            "failure-causes", new ResourceSpec("failure_cause", List.of("name", "status")),
-            "staff", new ResourceSpec("staff", List.of("user_id", "department_id", "workno", "position", "openid", "status")),
-            "reminder-users", new ResourceSpec("reminder_user", List.of("staff_id", "type", "status")),
-            "archives", new ResourceSpec("equipment_archive", List.of("model", "name", "parameter", "amount", "supplier_id", "purchase_time", "region", "responsible_user_id", "document", "remark", "status"))
+    private static final Map<String, ResourceSpec> RESOURCES = Map.ofEntries(
+            Map.entry("departments", new ResourceSpec("department", List.of("name", "equipment_manage", "status"))),
+            Map.entry("suppliers", new ResourceSpec("supplier", List.of("supplier_code", "name", "relationship", "bank", "bank_account", "contact", "contact_mobile", "remark", "status"))),
+            Map.entry("failure-causes", new ResourceSpec("failure_cause", List.of("name", "status"))),
+            Map.entry("staff", new ResourceSpec("staff", List.of("user_id", "department_id", "workno", "position", "openid", "status"))),
+            Map.entry("reminder-users", new ResourceSpec("reminder_user", List.of("staff_id", "type", "status"))),
+            Map.entry("archives", new ResourceSpec("equipment_archive", List.of("model", "name", "parameter", "amount", "supplier_id", "purchase_time", "region", "responsible_user_id", "document", "remark", "status"))),
+            Map.entry("equipment-items", new ResourceSpec("equipment_item", List.of("archive_id", "coding", "equipment_code", "work_status", "status"))),
+            Map.entry("repairs", new ResourceSpec("repair_order", List.of("repair_code", "archive_id", "equipment_id", "register_user_id", "register_time", "content", "register_image", "repair_user_id", "assign_time", "repair_time", "repair_content", "repair_image", "failure_cause_id", "consuming_seconds", "status"))),
+            Map.entry("records", new ResourceSpec("equipment_record", List.of("equipment_id", "relate_id", "add_user_id", "name", "type", "content", "status"))),
+            Map.entry("plan-fields", new ResourceSpec("plan_field", List.of("plan_id", "label", "name", "type", "default_value", "options", "attributes", "required", "sort", "status"))),
+            Map.entry("plans", new ResourceSpec("work_plan", List.of("coding", "name", "type", "periodicity", "first_due_time", "last_due_time", "status")))
     );
 
     private final JdbcTemplate jdbc;
@@ -51,12 +56,17 @@ public class LegacyAdminController {
                                                              @RequestParam(defaultValue = "1") int page,
                                                              @RequestParam(defaultValue = "20") int size,
                                                              @RequestParam(defaultValue = "false") boolean recycle,
-                                                             @RequestParam(required = false) String keyword) {
+                                                             @RequestParam(required = false) String keyword,
+                                                             @RequestParam(required = false) Long archiveId,
+                                                             @RequestParam(required = false) Long equipmentId,
+                                                             @RequestParam(required = false) String workStatus,
+                                                             @RequestParam(required = false) String repairStatus,
+                                                             @RequestParam(required = false) String type) {
         ready();
         ResourceSpec spec = spec(resource);
         int safePage = Math.max(page, 1);
         int safeSize = Math.max(size, 1);
-        QueryParts query = listQuery(resource, spec, recycle, keyword);
+        QueryParts query = listQuery(resource, spec, recycle, keyword, archiveId, equipmentId, workStatus, repairStatus, type);
         long total = count("select count(*) from " + spec.table + " x where " + query.where, query.args.toArray());
         List<Object> args = new ArrayList<>(query.args);
         args.add(safeSize);
@@ -195,7 +205,8 @@ public class LegacyAdminController {
     public ApiResponse<PageResult<Map<String, Object>>> plans(@RequestParam(required = false) String type,
                                                               @RequestParam(defaultValue = "false") boolean deactivated,
                                                               @RequestParam(defaultValue = "1") int page,
-                                                              @RequestParam(defaultValue = "20") int size) {
+                                                              @RequestParam(defaultValue = "20") int size,
+                                                              @RequestParam(required = false) String keyword) {
         ready();
         int safePage = Math.max(page, 1);
         int safeSize = Math.max(size, 1);
@@ -204,6 +215,10 @@ public class LegacyAdminController {
         if (type != null && !type.isBlank()) {
             where.insert(0, "(").append(") and p.type=?");
             args.add(type);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            where.insert(0, "(").append(") and p.name like ?");
+            args.add("%" + keyword + "%");
         }
         long total = count("select count(*) from work_plan p where " + where, args.toArray());
         args.add(safeSize);
@@ -276,7 +291,9 @@ public class LegacyAdminController {
     @GetMapping("/records")
     public ApiResponse<PageResult<Map<String, Object>>> records(@RequestParam(defaultValue = "1") int page,
                                                                 @RequestParam(defaultValue = "20") int size,
-                                                                @RequestParam(required = false) String type) {
+                                                                @RequestParam(required = false) String type,
+                                                                @RequestParam(required = false) Long archiveId,
+                                                                @RequestParam(required = false) Long equipmentId) {
         ready();
         int safePage = Math.max(page, 1);
         int safeSize = Math.max(size, 1);
@@ -285,6 +302,14 @@ public class LegacyAdminController {
         if (type != null && !type.isBlank()) {
             where.append(" and r.type=?");
             args.add(type);
+        }
+        if (archiveId != null && archiveId > 0) {
+            where.append(" and exists(select 1 from equipment_item e where e.id=r.equipment_id and e.archive_id=?)");
+            args.add(archiveId);
+        }
+        if (equipmentId != null && equipmentId > 0) {
+            where.append(" and r.equipment_id=?");
+            args.add(equipmentId);
         }
         long total = count("select count(*) from equipment_record r where " + where, args.toArray());
         args.add(safeSize);
@@ -386,9 +411,37 @@ public class LegacyAdminController {
         return repairDetail(id);
     }
 
-    private QueryParts listQuery(String resource, ResourceSpec spec, boolean recycle, String keyword) {
+    private QueryParts listQuery(String resource, ResourceSpec spec, boolean recycle, String keyword, Long archiveId, Long equipmentId, String workStatus, String repairStatus, String type) {
         List<Object> args = new ArrayList<>();
         String where = recycle ? "x.deleted_at is not null" : "x.deleted_at is null";
+        if (archiveId != null && archiveId > 0) {
+            if ("equipment-items".equals(resource)) {
+                where += " and x.archive_id=?";
+                args.add(archiveId);
+            } else if ("repairs".equals(resource)) {
+                where += " and x.archive_id=?";
+                args.add(archiveId);
+            } else if ("records".equals(resource)) {
+                where += " and exists(select 1 from equipment_item e where e.id=x.equipment_id and e.archive_id=?)";
+                args.add(archiveId);
+            }
+        }
+        if (equipmentId != null && equipmentId > 0 && ("repairs".equals(resource) || "records".equals(resource))) {
+            where += " and x.equipment_id=?";
+            args.add(equipmentId);
+        }
+        if (workStatus != null && !workStatus.isBlank() && "equipment-items".equals(resource)) {
+            where += " and x.work_status=?";
+            args.add(workStatus);
+        }
+        if (repairStatus != null && !repairStatus.isBlank() && "repairs".equals(resource)) {
+            where += " and x.status=?";
+            args.add(repairStatus);
+        }
+        if (type != null && !type.isBlank() && ("records".equals(resource) || "plans".equals(resource))) {
+            where += " and x.type=?";
+            args.add(type);
+        }
         if (keyword != null && !keyword.isBlank()) {
             String key = "%" + keyword + "%";
             switch (resource) {
@@ -415,6 +468,24 @@ public class LegacyAdminController {
                     args.add(key);
                     args.add(key);
                 }
+                case "equipment-items" -> {
+                    where += " and (x.equipment_code like ? or x.coding like ? or exists(select 1 from equipment_archive a where a.id=x.archive_id and (a.model like ? or a.name like ?)))";
+                    args.add(key);
+                    args.add(key);
+                    args.add(key);
+                    args.add(key);
+                }
+                case "repairs" -> {
+                    where += " and (x.repair_code like ? or x.content like ? or exists(select 1 from equipment_item e where e.id=x.equipment_id and e.equipment_code like ?))";
+                    args.add(key);
+                    args.add(key);
+                    args.add(key);
+                }
+                case "records" -> {
+                    where += " and (x.name like ? or x.content like ?)";
+                    args.add(key);
+                    args.add(key);
+                }
                 default -> {
                 }
             }
@@ -438,10 +509,44 @@ public class LegacyAdminController {
                     order by x.id desc
                     """.formatted(where);
             case "archives" -> """
-                    select x.*, coalesce(s.name, '') supplier, coalesce(u.nickname, u.username, '') responsible
+                    select x.*, coalesce(s.name, '') supplier, coalesce(u.nickname, u.username, '') responsible,
+                           coalesce(u.mobile, '') responsible_mobile
                     from equipment_archive x
                     left join supplier s on s.id=x.supplier_id
                     left join app_user u on u.id=x.responsible_user_id
+                    where %s
+                    order by x.id desc
+                    """.formatted(where);
+            case "equipment-items" -> """
+                    select x.*, a.model archive_model, a.name archive_name, a.region, coalesce(s.name, '') supplier,
+                           coalesce(u.nickname, u.username, '') responsible, coalesce(u.mobile, '') responsible_mobile
+                    from equipment_item x
+                    join equipment_archive a on a.id=x.archive_id
+                    left join supplier s on s.id=a.supplier_id
+                    left join app_user u on u.id=a.responsible_user_id
+                    where %s
+                    order by x.id desc
+                    """.formatted(where);
+            case "repairs" -> """
+                    select x.*, e.coding, e.equipment_code, a.model archive_model, a.name archive_name,
+                           fc.name failure_cause, coalesce(ru.nickname, ru.username, '') register_user,
+                           coalesce(mu.nickname, mu.username, '') repair_user
+                    from repair_order x
+                    join equipment_item e on e.id=x.equipment_id
+                    join equipment_archive a on a.id=x.archive_id
+                    left join failure_cause fc on fc.id=x.failure_cause_id
+                    left join app_user ru on ru.id=x.register_user_id
+                    left join app_user mu on mu.id=x.repair_user_id
+                    where %s
+                    order by x.register_time desc, x.id desc
+                    """.formatted(where);
+            case "records" -> """
+                    select x.*, e.equipment_code, a.model archive_model, a.name archive_name,
+                           coalesce(u.nickname, u.username, '') add_user
+                    from equipment_record x
+                    left join equipment_item e on e.id=x.equipment_id
+                    left join equipment_archive a on a.id=e.archive_id
+                    left join app_user u on u.id=x.add_user_id
                     where %s
                     order by x.id desc
                     """.formatted(where);
@@ -480,7 +585,7 @@ public class LegacyAdminController {
         if (value == null || Objects.equals(value, "")) {
             return column.endsWith("_id") || "amount".equals(column) || "equipment_manage".equals(column) ? 0 : "";
         }
-        if ("purchase_time".equals(column) && value instanceof Number number && number.longValue() > 0) {
+        if (("purchase_time".equals(column) || column.endsWith("_time")) && value instanceof Number number && number.longValue() > 0) {
             return Instant.ofEpochSecond(number.longValue()).atZone(ZONE).toLocalDateTime();
         }
         return value;
@@ -492,6 +597,17 @@ public class LegacyAdminController {
             values.putIfAbsent("amount", 0);
             values.putIfAbsent("model", "");
             values.putIfAbsent("name", "");
+        }
+        if ("equipment-items".equals(resource)) {
+            values.putIfAbsent("work_status", "normal");
+        }
+        if ("records".equals(resource)) {
+            values.putIfAbsent("type", "manual");
+            values.putIfAbsent("name", "");
+        }
+        if ("plans".equals(resource)) {
+            values.putIfAbsent("type", "inspection");
+            values.putIfAbsent("periodicity", "1");
         }
     }
 

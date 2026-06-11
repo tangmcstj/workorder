@@ -72,7 +72,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { deleteData, getData, postData, putData, type PageResult } from '../api/client'
@@ -91,7 +92,16 @@ const tabs: Tab[] = [
   { name: 'records', label: '设备记录', columns: [{ prop: 'equipment_code', label: '设备编号' }, { prop: 'archive_name', label: '设备名称' }, { prop: 'name', label: '记录名称' }, { prop: 'type', label: '类型' }, { prop: 'add_user', label: '操作人' }, { prop: 'status', label: '状态' }], fields: [] }
 ]
 
-const active = ref('departments')
+const route = useRoute()
+const pathTabs: Record<string, string> = {
+  '/departments': 'departments',
+  '/staff': 'staff',
+  '/suppliers': 'suppliers',
+  '/failure-causes': 'failure-causes',
+  '/reminder-users': 'reminder-users',
+  '/records': 'records'
+}
+const active = ref(String(route.query.tab || pathTabs[route.path] || 'departments'))
 const keyword = ref('')
 const recycle = ref(false)
 const page = ref(1)
@@ -180,4 +190,8 @@ async function loadPlanFields(row: Row) {
 }
 
 onMounted(load)
+watch(() => route.fullPath, () => {
+  active.value = String(route.query.tab || pathTabs[route.path] || active.value)
+  load()
+})
 </script>

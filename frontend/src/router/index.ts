@@ -19,10 +19,16 @@ const router = createRouter({
     { path: '/archives', component: ArchivesView },
     { path: '/equipment', component: EquipmentView },
     { path: '/repairs', component: RepairsView },
-    { path: '/inspection', component: PlanTasksView, props: { type: 'inspection', title: '巡检任务' } },
-    { path: '/maintenance', component: PlanTasksView, props: { type: 'maintenance', title: '保养任务' } },
+    { path: '/inspection', component: PlanTasksView, props: { type: 'inspection', title: '巡检计划' } },
+    { path: '/maintenance', component: PlanTasksView, props: { type: 'maintenance', title: '保养计划' } },
     { path: '/users', component: UsersView },
     { path: '/legacy-manage', component: LegacyManageView },
+    { path: '/departments', component: LegacyManageView },
+    { path: '/staff', component: LegacyManageView },
+    { path: '/suppliers', component: LegacyManageView },
+    { path: '/failure-causes', component: LegacyManageView },
+    { path: '/reminder-users', component: LegacyManageView },
+    { path: '/records', component: LegacyManageView },
     { path: '/settings', component: SettingsView }
   ]
 })

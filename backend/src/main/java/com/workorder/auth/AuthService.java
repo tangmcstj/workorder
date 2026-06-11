@@ -42,10 +42,15 @@ public class AuthService {
                 new AuthDtos.MenuItem("设备档案", "/archives", "Folder", "equipment:read"),
                 new AuthDtos.MenuItem("设备列表", "/equipment", "List", "equipment:read"),
                 new AuthDtos.MenuItem("维修工单", "/repairs", "Tools", "equipment:read"),
-                new AuthDtos.MenuItem("巡检任务", "/inspection", "Refresh", "equipment:read"),
-                new AuthDtos.MenuItem("保养任务", "/maintenance", "Clock", "equipment:read"),
+                new AuthDtos.MenuItem("巡检计划", "/inspection", "Refresh", "equipment:read"),
+                new AuthDtos.MenuItem("保养计划", "/maintenance", "Clock", "equipment:read"),
+                new AuthDtos.MenuItem("设备记录", "/records", "Tickets", "equipment:read"),
                 new AuthDtos.MenuItem("用户角色", "/users", "User", "user:manage"),
-                new AuthDtos.MenuItem("基础资料", "/legacy-manage", "DataLine", "user:manage"),
+                new AuthDtos.MenuItem("员工管理", "/staff", "UserFilled", "user:manage"),
+                new AuthDtos.MenuItem("部门管理", "/departments", "OfficeBuilding", "user:manage"),
+                new AuthDtos.MenuItem("供应商管理", "/suppliers", "Van", "user:manage"),
+                new AuthDtos.MenuItem("故障原因", "/failure-causes", "Warning", "user:manage"),
+                new AuthDtos.MenuItem("提醒人员", "/reminder-users", "Bell", "user:manage"),
                 new AuthDtos.MenuItem("系统配置", "/settings", "Setting", "config:manage")
         ).stream().filter(item -> permissions.contains(item.permission())).toList();
     }
