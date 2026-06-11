@@ -60,6 +60,32 @@
 - `GET /api/migration/legacy/report` 新旧表数量和状态分布报告
 - `POST /api/migration/legacy/run` 手动执行一次旧表到新表迁移
 
+## 旧后台管理节点兼容
+
+这些接口用于复刻 FastAdmin 后台的新增、编辑、删除、批量、回收站、恢复、销毁、选择器和业务动作。所有接口仍读写新规范表，旧 `fa_*` 表只作为迁移来源和核对基准。
+
+- `GET /api/admin/legacy/{resource}` 列表，支持 `page`、`size`、`keyword`、`recycle=true`
+- `POST /api/admin/legacy/{resource}` 新增
+- `PUT /api/admin/legacy/{resource}/{id}` 编辑
+- `DELETE /api/admin/legacy/{resource}/{id}` 软删除
+- `POST /api/admin/legacy/{resource}/{id}/restore` 回收站恢复
+- `DELETE /api/admin/legacy/{resource}/{id}/destroy` 回收站销毁
+- `PUT /api/admin/legacy/{resource}/multi` 批量更新
+- `resource` 白名单：`departments`、`suppliers`、`failure-causes`、`staff`、`reminder-users`、`archives`
+- `POST /api/admin/legacy/staff/{id}/unbind` 解绑员工微信
+- `GET /api/admin/legacy/staff-picker` 员工选择器，兼容旧 `picker`、`getPlanSelectpage`
+- `GET /api/admin/legacy/plans?type=inspection|maintenance` 巡检/保养计划
+- `GET /api/admin/legacy/plans?deactivated=true` 已停用计划
+- `POST /api/admin/legacy/plans/{id}/stop` 停用计划
+- `GET /api/admin/legacy/plans/{id}/fields` 计划检查项
+- `GET /api/admin/legacy/plans/{id}/equipment` 计划设备明细
+- `POST /api/admin/legacy/plans/clear-invalid-task?dryRun=true|false` 清理无效任务，默认只预览
+- `GET /api/admin/legacy/records` 设备记录列表
+- `GET /api/admin/legacy/records/{id}` 设备记录详情
+- `GET /api/admin/legacy/repairs/{id}` 维修详情
+- `POST /api/admin/legacy/repairs/{id}/assignment` 指派维修人员
+- `POST /api/admin/legacy/repairs/{id}/register` 后台维修登记
+
 ## 微信小程序兼容接口
 
 小程序兼容接口保留旧响应格式 `{code,msg,data}`，错误仍返回旧式 `code=0`。

@@ -45,6 +45,7 @@ public class AuthService {
                 new AuthDtos.MenuItem("巡检任务", "/inspection", "Refresh", "equipment:read"),
                 new AuthDtos.MenuItem("保养任务", "/maintenance", "Clock", "equipment:read"),
                 new AuthDtos.MenuItem("用户角色", "/users", "User", "user:manage"),
+                new AuthDtos.MenuItem("基础资料", "/legacy-manage", "DataLine", "user:manage"),
                 new AuthDtos.MenuItem("系统配置", "/settings", "Setting", "config:manage")
         ).stream().filter(item -> permissions.contains(item.permission())).toList();
     }
