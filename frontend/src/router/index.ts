@@ -37,6 +37,10 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   if (to.path !== '/login' && !auth.user) return '/login'
   if (to.path === '/login' && auth.user) return '/dashboard'
+  if (to.path !== '/login' && to.path !== '/dashboard') {
+    const allowed = auth.menus.some((item) => item.path === to.path)
+    if (!allowed) return '/dashboard'
+  }
 })
 
 export default router
